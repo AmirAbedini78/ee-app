@@ -1,31 +1,14 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { usePathname, useRouter } from "next/navigation"
+import { useRouter } from "next/navigation"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { LoginForm } from "@/components/login-form"
 import { SignupForm } from "@/components/signup-form"
 
-export default function HomePage() {
-  const pathname = usePathname()
+export default function SignupPage() {
   const router = useRouter()
-  const [activeTab, setActiveTab] = useState("login")
-
-  // Redirect root to /login on mount
-  useEffect(() => {
-    if (pathname === "/") {
-      router.push("/login")
-    }
-  }, [pathname, router])
-
-  // Sync tab with URL
-  useEffect(() => {
-    if (pathname === "/signup") {
-      setActiveTab("signup")
-    } else if (pathname === "/login" || pathname === "/") {
-      setActiveTab("login")
-    }
-  }, [pathname])
+  const [activeTab, setActiveTab] = useState("signup")
 
   // Handle tab change and update URL
   const handleTabChange = (value: string) => {
@@ -56,4 +39,3 @@ export default function HomePage() {
     </div>
   )
 }
-
