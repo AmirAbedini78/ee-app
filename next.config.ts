@@ -1,8 +1,6 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  turbo: true,
-  
   // Static export is disabled to allow full Next.js features:
   // - API Routes
   // - Server-Side Rendering (SSR)
