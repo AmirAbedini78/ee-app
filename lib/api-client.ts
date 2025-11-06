@@ -1,5 +1,5 @@
 /**
- * API Client for backend communication
+ * API Client for Directus CMS communication
  * Handles base URL, headers, authentication, and error handling
  */
 
@@ -7,6 +7,7 @@
 declare const process: {
   env: {
     [key: string]: string | undefined;
+    NEXT_PUBLIC_DIRECTUS_URL?: string;
     NEXT_PUBLIC_API_BASE_URL?: string;
     NEXT_PUBLIC_API_KEY?: string;
     API_TOKEN?: string;
@@ -28,23 +29,43 @@ interface ApiError extends Error {
 }
 
 /**
- * Get the base API URL from environment variables
+ * Get the base API URL from environment variables (Directus)
  */
 function getApiBaseUrl(): string {
   // NEXT_PUBLIC_ variables are available at build time in Next.js
-  const baseUrl = typeof process !== 'undefined' 
-    ? process.env.NEXT_PUBLIC_API_BASE_URL 
+  const directusUrl = typeof process !== 'undefined' 
+    ? process.env.NEXT_PUBLIC_DIRECTUS_URL 
     : undefined;
+  
+  // Fallback to legacy API_BASE_URL if DIRECTUS_URL is not set
+  const baseUrl = directusUrl || (typeof process !== 'undefined' 
+    ? process.env.NEXT_PUBLIC_API_BASE_URL 
+    : undefined);
   
   if (!baseUrl) {
     throw new Error(
-      'NEXT_PUBLIC_API_BASE_URL is not set. Please set it in your .env.local file (local) or environment variables (production).\n' +
-      'If you are not using API calls, you can ignore this error. Set the environment variable only when you start using API.'
+      'NEXT_PUBLIC_DIRECTUS_URL is not set. Please set it in your .env.local file (local) or environment variables (production).\n' +
+      'Example: NEXT_PUBLIC_DIRECTUS_URL=https://cms.explorerelite.com'
     );
   }
   
   // Remove trailing slash if present
   return baseUrl.replace(/\/$/, '');
+}
+
+/**
+ * Get authentication token from localStorage (client-side, internal use)
+ */
+function getStoredAuthToken(): string | null {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+  
+  try {
+    return localStorage.getItem('directus_access_token');
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -55,7 +76,13 @@ function getDefaultHeaders(): HeadersInit {
     'Content-Type': 'application/json',
   };
 
-  // Add API key if available (client-side)
+  // Add Authorization header if token is available
+  const token = getStoredAuthToken();
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  // Add API key if available (for other APIs, not Directus)
   if (typeof window !== 'undefined' && typeof process !== 'undefined' && process.env.NEXT_PUBLIC_API_KEY) {
     headers['X-API-Key'] = process.env.NEXT_PUBLIC_API_KEY;
   }
@@ -170,26 +197,73 @@ export const api = {
 };
 
 /**
- * Set authentication token (for server-side usage)
- * Note: This is a placeholder. In practice, tokens should be stored securely
- * (e.g., in session storage, cookies, or server-side state management)
+ * Set authentication token (client-side localStorage)
  */
 export function setAuthToken(token: string): void {
-  // This can be used in server components or API routes
-  // For client-side, use headers in the request options
-  if (typeof window === 'undefined' && typeof process !== 'undefined') {
-    process.env.API_TOKEN = token;
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.setItem('directus_access_token', token);
+    } catch (error) {
+      console.error('Failed to save token to localStorage:', error);
+    }
   }
 }
 
 /**
- * Get authentication token (for server-side usage)
+ * Set refresh token (client-side localStorage)
  */
-export function getAuthToken(): string | undefined {
-  if (typeof window === 'undefined' && typeof process !== 'undefined') {
-    return process.env.API_TOKEN;
+export function setRefreshToken(token: string): void {
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.setItem('directus_refresh_token', token);
+    } catch (error) {
+      console.error('Failed to save refresh token to localStorage:', error);
+    }
   }
-  return undefined;
+}
+
+/**
+ * Get authentication token (client-side localStorage)
+ */
+export function getAuthToken(): string | null {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+  
+  try {
+    return localStorage.getItem('directus_access_token');
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Get refresh token (client-side localStorage)
+ */
+export function getRefreshToken(): string | null {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+  
+  try {
+    return localStorage.getItem('directus_refresh_token');
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Clear authentication tokens
+ */
+export function clearAuthTokens(): void {
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.removeItem('directus_access_token');
+      localStorage.removeItem('directus_refresh_token');
+    } catch (error) {
+      console.error('Failed to clear tokens from localStorage:', error);
+    }
+  }
 }
 
 export default api;
